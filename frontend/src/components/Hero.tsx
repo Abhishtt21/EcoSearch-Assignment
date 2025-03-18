@@ -5,15 +5,27 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+function useViewport() {
+  const [width, setWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    const handleResize = () => setWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+  return { width };
+}
+
 export default function Hero() {
   const [email, setEmail] = useState("");
   const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef(null);
+  const { width } = useViewport();
+  const isSmallScreen = width < 640;
 
   // Handle clicking outside the input box
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (event) => {
+      if (inputRef.current && !inputRef.current.contains(event.target)) {
         setIsFocused(false);
       }
     };
@@ -31,8 +43,8 @@ export default function Hero() {
     try {
       await axios.post(`${API_URL}/waitlist`, { email });
       toast.success("Successfully joined the waitlist!");
-      setEmail(""); // Clear input
-      setIsFocused(false); // Hide button and shrink input (for large screens)
+      setEmail("");
+      setIsFocused(false);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Failed to join. Please try again.");
@@ -63,36 +75,37 @@ export default function Hero() {
 
       {/* Input & Button Section */}
       <motion.div
-        ref={inputRef}
-        className="mt-6 flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-full shadow-lg w-full sm:w-[20rem] md:w-[28rem]"
-        initial={{ width: "20rem" }}
-        animate={{ width: isFocused ? "28rem" : "20rem" }}
-        transition={{ type: "spring", stiffness: 150 }}
-      >
-        <input
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onFocus={() => setIsFocused(true)}
-          className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
-        />
+  ref={inputRef}
+  // Use Tailwind classes for widths instead of inline style with rem units
+  className="mt-6 flex flex-col sm:flex-row items-center gap-3 bg-white p-3 rounded-full shadow-lg w-full sm:max-w-md md:max-w-lg"
+  // Remove or simplify the width animation to avoid overflow on small screens
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.5 }}
+>
+  <input
+    type="email"
+    placeholder="Enter your email"
+    value={email}
+    onChange={(e) => setEmail(e.target.value)}
+    onFocus={() => setIsFocused(true)}
+    className="w-full px-4 py-3 text-gray-700 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+  />
 
-        {/* Show button below input on small screens, inside input on larger screens */}
-        <AnimatePresence>
-          {isFocused || window.innerWidth < 640 ? (
-            <motion.button
-              onClick={handleJoinWaitlist}
-              className="px-6 py-3 bg-green-600 text-white font-semibold rounded-full shadow hover:bg-green-700 transition-all whitespace-nowrap w-full sm:w-auto"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-            >
-              Join the waitlist
-            </motion.button>
-          ) : null}
-        </AnimatePresence>
-      </motion.div>
+  <AnimatePresence>
+    {(isFocused || isSmallScreen) && (
+      <motion.button
+        onClick={handleJoinWaitlist}
+        className="px-6 py-3 bg-green-600 text-white font-semibold rounded-full shadow hover:bg-green-700 transition-all whitespace-nowrap w-full sm:w-auto"
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+      >
+        Join the waitlist
+      </motion.button>
+    )}
+  </AnimatePresence>
+</motion.div>
     </section>
   );
 }
